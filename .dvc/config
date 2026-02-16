@@ -1,0 +1,4 @@
+[core]
+    remote = localstore
+['remote "localstore"']
+    url = /Users/shekaib/dvcstore/mlops-bin-image-class
