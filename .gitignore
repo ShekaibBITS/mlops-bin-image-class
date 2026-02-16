@@ -1,0 +1,31 @@
+# Python virtual environment directory (created locally)
+.venv/
+
+# Python bytecode cache directories
+__pycache__/
+*.pyc
+
+# Local environment variables (never commit secrets)
+.env
+
+# Local ML artifacts / runs (we will decide later what to keep)
+mlruns/
+artifacts/
+models/*.pt
+models/*.pth
+models/*.h5
+models/*.pkl
+
+# OS / IDE files
+.DS_Store
+.vscode/
+.idea/
+
+# DVC local cache (data tracked separately)
+.dvc/cache/
+
+# Pytest cache
+.pytest_cache/
+
+# Logs
+*.log
