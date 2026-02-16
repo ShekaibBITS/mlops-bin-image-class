@@ -1,0 +1,17 @@
+# Training stack
+torch==2.4.1
+torchvision==0.19.1
+numpy==2.0.2
+pandas==2.2.3
+scikit-learn==1.5.2
+matplotlib==3.9.2
+tqdm==4.66.5
+pyyaml==6.0.2
+pillow==10.4.0
+
+# Experiment tracking
+mlflow==2.16.2
+
+# Data versioning / pipeline
+dvc==3.55.2
+kaggle==1.6.17

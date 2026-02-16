@@ -1,16 +1,15 @@
-# Web API framework for inference service
+# Inference API (FastAPI service)
 fastapi==0.115.6
-
-# ASGI server to run FastAPI
 uvicorn[standard]==0.32.1
-
-# Image handling + multipart upload support (for /predict later)
 pillow==10.4.0
 python-multipart==0.0.12
-
-# Logging helpers (optional but useful)
+pydantic==2.9.2
 structlog==24.4.0
 
-# Testing framework
-pytest==8.3.4
-httpx==0.27.2
+# Model inference runtime
+torch==2.4.1
+torchvision==0.19.1
+numpy==2.0.2
+
+# Metrics endpoint later (Prometheus format)
+prometheus-client==0.21.0
