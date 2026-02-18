@@ -1,0 +1,35 @@
+stages:
+  download:
+    cmd: python -m src.data.download_kaggle --dataset bhavikjikadara/dog-and-cat-classification-dataset --out_dir data/raw
+    outs:
+      - data/raw
+
+  preprocess:
+    cmd: python -m src.data.preprocess --raw_dir data/raw --processed_dir data/processed --size 224
+    deps:
+      - data/raw
+      - src/data/preprocess.py
+    outs:
+      - data/processed
+
+  split:
+    cmd: python -m src.data.split --processed_dir data/processed --out_dir data/splits --seed 42
+    deps:
+      - data/processed
+      - src/data/split.py
+    outs:
+      - data/splits
+
+  train:
+    cmd: python -c "from src.train.train import main; main('params.yaml')"
+    deps:
+      - data/splits
+      - src/train/train.py
+      - src/train/model.py
+      - params.yaml
+    outs:
+      - models/model.pt
+      - models/metadata.json
+    metrics:
+      - artifacts/classification_report_val.txt:
+          cache: false

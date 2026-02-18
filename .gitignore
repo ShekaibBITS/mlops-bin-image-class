@@ -29,4 +29,3 @@ models/*.pkl
 
 # Logs
 *.log
-/models
