@@ -1,0 +1,5 @@
+# Ignore all data content in Git (DVC will track these)
+# Keep this file committed so data folders don't get accidentally committed.
+raw/
+processed/
+splits/
