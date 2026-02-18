@@ -30,6 +30,7 @@ stages:
     outs:
       - models/model.pt
       - models/metadata.json
+      - artifacts  # track plots + reports produced by training
     metrics:
       - artifacts/classification_report_val.txt:
           cache: false
