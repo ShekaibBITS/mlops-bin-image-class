@@ -19,5 +19,4 @@ kaggle==1.6.17
 # pathspec>=0.10.3
 # Pin pathspec to avoid DVC import issues
 pathspec==0.12.1
-
 packaging==24.2
