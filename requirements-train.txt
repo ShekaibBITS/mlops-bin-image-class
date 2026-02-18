@@ -15,4 +15,8 @@ mlflow==2.16.2
 # Data versioning / pipeline
 dvc==3.55.2
 kaggle==1.6.17
-pathspec>=0.10.3
+
+# pathspec>=0.10.3
+# Pin pathspec to avoid DVC import issues
+pathspec==0.12.1
+
