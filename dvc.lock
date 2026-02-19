@@ -1,0 +1,83 @@
+schema: '2.0'
+stages:
+  download:
+    cmd: python -m src.data.download_kaggle --dataset 
+      bhavikjikadara/dog-and-cat-classification-dataset --out_dir data/raw
+    outs:
+    - path: data/raw
+      hash: md5
+      md5: 8467ce11580412ec0b77ca194007550a.dir
+      size: 848866410
+      nfiles: 24998
+  preprocess:
+    cmd: python -m src.data.preprocess --raw_dir data/raw --processed_dir 
+      data/processed --size 224
+    deps:
+    - path: data/raw
+      hash: md5
+      md5: 8467ce11580412ec0b77ca194007550a.dir
+      size: 848866410
+      nfiles: 24998
+    - path: src/data/preprocess.py
+      hash: md5
+      md5: c382c34916e4754afac5739757afaed3
+      size: 3934
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: 57e4ae20cd2128501f09dd5bb715f6ef.dir
+      size: 548354385
+      nfiles: 24998
+  split:
+    cmd: python -m src.data.split --processed_dir data/processed --out_dir 
+      data/splits --seed 42
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: 57e4ae20cd2128501f09dd5bb715f6ef.dir
+      size: 548354385
+      nfiles: 24998
+    - path: src/data/split.py
+      hash: md5
+      md5: fce89938cee60c73716038ebb32f02be
+      size: 3038
+    outs:
+    - path: data/splits
+      hash: md5
+      md5: 9268293b170291b4ca86285ed90e17c6.dir
+      size: 877755
+      nfiles: 3
+  train:
+    cmd: python -c "from src.train.train import main; main('params.yaml')"
+    deps:
+    - path: data/splits
+      hash: md5
+      md5: 9268293b170291b4ca86285ed90e17c6.dir
+      size: 877755
+      nfiles: 3
+    - path: params.yaml
+      hash: md5
+      md5: a202f762ab69d751e7c42f4c4a833999
+      size: 176
+    - path: src/train/model.py
+      hash: md5
+      md5: 9b6046ae98f7e0c0d01bdc4eaa859f1b
+      size: 1681
+    - path: src/train/train.py
+      hash: md5
+      md5: f34403520e9e3916a2cfb6ee6abfa5d9
+      size: 10823
+    outs:
+    - path: artifacts
+      hash: md5
+      md5: 53eeeea42ee6ee73dee426f5326ecb17.dir
+      size: 57437
+      nfiles: 3
+    - path: models/metadata.json
+      hash: md5
+      md5: a192514278bb6453c47c670e8d8f4e4d
+      size: 74
+    - path: models/model.pt
+      hash: md5
+      md5: 3201328dad36195ef723af86ef73a0aa
+      size: 25789468
