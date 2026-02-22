@@ -9,23 +9,24 @@ Inputs:
 Outputs:
 - models/model.pt (trained model)
 - models/metadata.json (class mapping + config)
+- artifacts/ (loss curves, confusion matrix, classification report)
 - MLflow run logs (params, metrics, artifacts)
 """
 
-import argparse  # CLI arguments
 import json  # Save metadata JSON
+import os  # Environment variables (MLFLOW_TRACKING_URI)
 import time  # Timing
 from pathlib import Path  # Paths
 
 import matplotlib.pyplot as plt  # Plotting
 import mlflow  # Experiment tracking
-import os
-mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
 import numpy as np  # Numerical
 import pandas as pd  # Load split CSV
 import torch  # PyTorch
-import torch.nn as nn  # Loss
+import torch.nn as nn  # Loss + model types
 import torch.optim as optim  # Optimizer
+import yaml  # Read params.yaml
+from PIL import Image  # Load images
 from sklearn.metrics import (  # Evaluation artifacts
     accuracy_score,
     classification_report,
@@ -33,10 +34,11 @@ from sklearn.metrics import (  # Evaluation artifacts
 )
 from torch.utils.data import DataLoader, Dataset  # Data pipeline
 from torchvision import transforms  # Image transforms
-from PIL import Image  # Load images
-import yaml  # Read params.yaml
 
 from src.train.model import SimpleCNN  # Import baseline model
+
+# Force MLflow to log locally unless overridden by env var
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns"))
 
 
 class CSVDataset(Dataset):
@@ -65,6 +67,20 @@ def get_device() -> torch.device:
     if torch.backends.mps.is_available():  # Apple Silicon GPU backend
         return torch.device("mps")  # Use MPS
     return torch.device("cpu")  # Fallback
+
+
+def load_model_weights(model: nn.Module, weights_path: Path, device: torch.device) -> nn.Module:
+    """
+    Safely load a PyTorch state_dict into the provided model.
+
+    Why: Newer PyTorch warns about pickle-based loading when weights_only=False.
+    We save only state_dict, so weights_only=True is the correct and safer mode.
+    """
+    state_dict = torch.load(weights_path, map_location=device, weights_only=True)  # safe load
+    model.load_state_dict(state_dict)  # apply weights
+    model.to(device)  # move model to device
+    model.eval()  # eval mode by default
+    return model  # return configured model
 
 
 def plot_and_save_curves(train_losses, val_losses, out_path: Path) -> None:
@@ -170,17 +186,27 @@ def main(params_path: str) -> None:
     device = get_device()  # Pick device
     print(f"Using device: {device}")  # Print device
 
-    # Define transforms: convert to tensor + normalize
-    transform = transforms.Compose([
-        transforms.Resize((image_size, image_size)),  # Ensure correct size
+    # Define transforms
+    # Train transform includes augmentation to improve generalization (rubric requirement)
+    train_transform = transforms.Compose([
+        transforms.Resize((image_size, image_size)),  # Ensure correct size first
+        transforms.RandomHorizontalFlip(p=0.5),  # Random flip (common for pets)
+        transforms.RandomRotation(degrees=10),  # Small rotations
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),  # Lighting variation
         transforms.ToTensor(),  # Convert PIL -> torch tensor [0,1]
+    ])
+
+    # Validation transform must be deterministic (no augmentation)
+    val_transform = transforms.Compose([
+        transforms.Resize((image_size, image_size)),  # Deterministic resize
+        transforms.ToTensor(),  # Convert to tensor
     ])
 
     train_csv = Path("data/splits/train.csv")  # Train manifest
     val_csv = Path("data/splits/val.csv")  # Val manifest
 
-    train_ds = CSVDataset(train_csv, transform=transform)  # Train dataset
-    val_ds = CSVDataset(val_csv, transform=transform)  # Val dataset
+    train_ds = CSVDataset(train_csv, transform=train_transform)  # Train dataset (augmented)
+    val_ds = CSVDataset(val_csv, transform=val_transform)  # Val dataset (deterministic)
 
     train_loader = DataLoader(  # Train loader
         train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers
@@ -207,6 +233,7 @@ def main(params_path: str) -> None:
         mlflow.log_param("lr", lr)  # Log LR
         mlflow.log_param("weight_decay", weight_decay)  # Log regularization
         mlflow.log_param("device", str(device))  # Log device used
+        mlflow.log_param("augmentation", "hflip+rotation10+colorjitter0.2")  # Record augmentation
 
         train_losses = []  # Store train loss per epoch
         val_losses = []  # Store val loss per epoch
@@ -239,8 +266,10 @@ def main(params_path: str) -> None:
             mlflow.log_metric("val_acc", va_acc, step=epoch)  # Val acc metric
 
             dt = time.time() - t0  # Duration
-            print(f"Epoch {epoch+1}/{epochs} | tr_loss={tr_loss:.4f} tr_acc={tr_acc:.4f} "
-                  f"| va_loss={va_loss:.4f} va_acc={va_acc:.4f} | {dt:.1f}s")  # Print status
+            print(
+                f"Epoch {epoch+1}/{epochs} | tr_loss={tr_loss:.4f} tr_acc={tr_acc:.4f} "
+                f"| va_loss={va_loss:.4f} va_acc={va_acc:.4f} | {dt:.1f}s"
+            )  # Print status
 
         # Save artifacts: loss curves, confusion matrix, report
         curves_path = Path("artifacts/loss_curves.png")  # Curves output
@@ -268,3 +297,12 @@ def main(params_path: str) -> None:
         metadata_path = Path("models/metadata.json")  # Metadata file
         metadata_path.write_text(json.dumps(metadata, indent=2))  # Write JSON
         mlflow.log_artifact(str(metadata_path))  # Log metadata
+
+
+if __name__ == "__main__":
+    import argparse  # CLI arguments (kept here to avoid unused import warnings)
+
+    parser = argparse.ArgumentParser()  # CLI parser
+    parser.add_argument("--params", type=str, default="params.yaml")  # Params file path
+    args = parser.parse_args()  # Parse CLI args
+    main(args.params)  # Run training
